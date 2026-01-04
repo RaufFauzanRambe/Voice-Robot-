@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Robot Asisten Pintar Advanced</title>
+<style>
+  body, html { margin:0; padding:0; width:100%; height:100%; font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; overflow-y:auto; background: linear-gradient(135deg,#0a4d3c 0%,#1a1a2e 25%,#0f3460 50%,#16213e 75%,#1e5f5a 100%);}
+  .container { display:flex; flex-direction:column; align-items:center; padding:40px 20px; min-height:100%; position:relative; }
+  .title { font-size:48px; font-weight:bold; color:#00ffcc; text-align:center; margin-bottom:40px; text-shadow:0 0 20px rgba(0,255,204,0.6),0 0 40px rgba(0,255,204,0.3); animation: glow 2s ease-in-out infinite;}
+  @keyframes glow { 0%,100% { text-shadow:0 0 20px rgba(0,255,204,0.6),0 0 40px rgba(0,255,204,0.3);} 50% { text-shadow:0 0 30px rgba(0,255,204,0.8),0 0 60px rgba(0,255,204,0.5);} }
+  .robot-container { margin-bottom:40px; animation: float 3s ease-in-out infinite; position:relative; }
+  @keyframes float { 0%,100%{transform:translateY(0);}50%{transform:translateY(-20px);} }
+  .robot-head { width:180px; height:160px; background:linear-gradient(145deg,#2c3e50,#34495e); border-radius:30px; position:relative; display:flex; flex-direction:column; align-items:center; }
+  .eyes { display:flex; justify-content:space-around; width:100%; margin-top:50px; }
+  .eye { width:45px; height:45px; background:#ecf0f1; border-radius:50%; position:relative; box-shadow:inset 0 3px 10px rgba(0,0,0,0.3);}
+  .pupil { width:20px; height:20px; background:#2c3e50; border-radius:50%; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);}
+  .mouth { width:80px; height:8px; background:#34495e; border-radius:0 0 40px 40px; position:relative; margin-top:20px; transition:all 0.3s ease;}
+  .mouth.speaking { height:25px; border-radius:50%; animation:speak 0.3s ease-in-out infinite;}
+  @keyframes speak {0%,100%{transform:scaleY(1);}50%{transform:scaleY(0.7);}}
+  .controls { width:100%; max-width:900px; display:flex; flex-direction:column; gap:30px; align-items:center; }
+  .message-input { width:100%; padding:20px; font-size:18px; color:#ecf0f1; background:rgba(52,73,94,0.6); border:2px solid rgba(0,255,204,0.3); border-radius:15px; resize:vertical; min-height:100px;}
+  .speak-message-button, .stop-button { padding:18px 40px; font-size:18px; font-weight:bold; color:#fff; border:none; border-radius:15px; cursor:pointer;}
+  .speak-message-button { background:linear-gradient(145deg,#3498db,#2980b9); display:flex; gap:10px; }
+  .speak-message-button:hover { background:linear-gradient(145deg,#2980b9,#21618c);}
+  .stop-button { background:linear-gradient(145deg,#e74c3c,#c0392b); display:none; margin-top:10px; }
+  .stop-button.visible { display:inline-block; }
+  .topics-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:15px; width:100%; margin-top:20px; }
+  .topic-button { padding:15px 25px; font-size:16px; font-weight:600; color:#fff; background:linear-gradient(145deg,#27ae60,#229954); border-radius:15px; cursor:pointer; display:flex; gap:10px; align-items:center; }
+  .topic-button.speaking { background:linear-gradient(145deg,#e74c3c,#c0392b); animation:buttonPulse 0.6s ease-in-out infinite; }
+  @keyframes buttonPulse {0%,100%{transform:scale(1);}50%{transform:scale(1.02);}}
+  .Copyright { font-size:14px; color:#fff; margin-top:40px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1 class="title">ROBOT ASISTEN PINTAR</h1>
+  <div class="robot-container">
+    <div class="robot-head">
+      <div class="eyes">
+        <div class="eye"><div class="pupil"></div></div>
+        <div class="eye"><div class="pupil"></div></div>
+      </div>
+      <div class="mouth" id="mouth"></div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <textarea id="userMessage" class="message-input" placeholder="Ketik pesan Anda di sini..."></textarea>
+    <button class="speak-message-button" id="speakMessageButton">🎙️ BICARA SEKARANG</button>
+    <button class="stop-button" id="stopButton">⏹️ STOP</button>
+
+    <div class="topics-grid" id="dailyTopics"></div>
+  </div>
+
+  <p class="Copyright">Copyright Ra'uf</p>
+</div>
+
+<script>
+const mouth = document.getElementById('mouth');
+const speakButton = document.getElementById('speakMessageButton');
+const stopButton = document.getElementById('stopButton');
+const messageInput = document.getElementById('userMessage');
+const dailyTopics = document.getElementById('dailyTopics');
+
+let currentUtterance = null;
+
+const conversationData = [
+  { icon:"☀️", title:"Salam Pagi", text:"Selamat pagi! Semoga hari Anda menyenangkan dan penuh energi positif.", english:"Good morning! Have a positive day!" },
+  { icon:"🍽️", title:"Ajakan Makan", text:"Wah, sudah jam makan siang nih! Yuk kita makan bersama.", english:"It's lunchtime! Let's eat together." },
+  { icon:"🌙", title:"Salam Malam", text:"Selamat malam! Semoga besok menjadi hari yang lebih baik.", english:"Good evening! Hope tomorrow is better." },
+  { icon:"📚", title:"Belajar Efektif", text:"Saat belajar, fokus pada satu materi agar cepat paham.", english:"When studying, focus on one topic to understand faster." },
+  { icon:"🖋️", title:"Produktivitas", text:"Buat daftar tugas harian agar lebih teratur.", english:"Make a daily task list to stay organized." },
+  { icon:"💼", title:"Bisnis Kecil", text:"Mulai bisnis kecil dengan modal yang sesuai kemampuan.", english:"Start a small business with manageable capital." },
+  { icon:"💰", title:"Finance", text:"Simpan sebagian pendapatan untuk dana darurat.", english:"Save part of your income for an emergency fund." },
+  { icon:"💻", title:"Coding", text:"Praktik coding setiap hari agar skill meningkat.", english:"Practice coding daily to improve your skills." },
+  { icon:"🤝", title:"Networking", text:"Bangun relasi baik dengan orang lain untuk peluang lebih luas.", english:"Build good relationships with others for broader opportunities." },
+  { icon:"🏋️", title:"Olahraga", text:"Jangan lupa olahraga agar tubuh tetap sehat.", english:"Don't forget to exercise to stay healthy." },
+  { icon:"🛏️", title:"Tidur Cukup", text:"Tidur minimal 7-8 jam untuk produktivitas optimal.", english:"Sleep at least 7-8 hours for optimal productivity." },
+  { icon:"🧘", title:"Meditasi", text:"Lakukan meditasi singkat untuk pikiran yang tenang.", english:"Do short meditation for a calm mind." },
+  { icon:"📝", title:"Planning", text:"Rencanakan kegiatan harian dan mingguan.", english:"Plan your daily and weekly activities." },
+  { icon:"📈", title:"Investasi", text:"Mulai investasi kecil untuk masa depan.", english:"Start small investments for the future." },
+  { icon:"📊", title:"Analisis Keuangan", text:"Cek pemasukan dan pengeluaran setiap minggu.", english:"Check your income and expenses weekly." },
+  { icon:"🛠️", title:"Proyek Coding", text:"Buat proyek coding sederhana setiap bulan.", english:"Create a simple coding project every month." },
+  { icon:"🎨", title:"Hobi Kreatif", text:"Luangkan waktu untuk hobi agar pikiran segar.", english:"Spend time on hobbies to refresh your mind." },
+  { icon:"🌐", title:"Bahasa Asing", text:"Belajar bahasa asing untuk skill tambahan.", english:"Learn a foreign language to gain extra skills." }
+];
+
+// Buat tombol topik
+conversationData.forEach((item)=>{
+  const btn = document.createElement('button');
+  btn.className = 'topic-button';
+  btn.innerText = `${item.icon} ${item.title}`;
+  btn.addEventListener('click', ()=> speakText(item.text, btn));
+  dailyTopics.appendChild(btn);
+});
+
+// Fungsi bicara
+function speakText(text, button=null){
+  stopCurrentSpeech();
+  if(button) button.classList.add('speaking');
+  mouth.classList.add('speaking');
+  stopButton.classList.add('visible');
+
+  currentUtterance = new SpeechSynthesisUtterance(text);
+  currentUtterance.lang = 'id-ID';
+  currentUtterance.rate = 1;
+  currentUtterance.pitch = 1;
+  currentUtterance.onend = ()=> {
+    mouth.classList.remove('speaking');
+    stopButton.classList.remove('visible');
+    if(button) button.classList.remove('speaking');
+  };
+  speechSynthesis.speak(currentUtterance);
+}
+
+// Stop saat tombol STOP ditekan
+function stopCurrentSpeech(){
+  if(currentUtterance){
+    speechSynthesis.cancel();
+    mouth.classList.remove('speaking');
+    stopButton.classList.remove('visible');
+    document.querySelectorAll('.topic-button.speaking').forEach(b=>b.classList.remove('speaking'));
+    currentUtterance = null;
+  }
+}
+
+// Tombol bicara manual
+speakButton.addEventListener('click', ()=>{
+  const text = messageInput.value.trim();
+  if(text) speakText(text);
+});
+
+// Tombol stop
+stopButton.addEventListener('click', stopCurrentSpeech);
+</script>
+</body>
+  </html>
